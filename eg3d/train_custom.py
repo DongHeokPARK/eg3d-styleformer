@@ -199,11 +199,11 @@ def parse_comma_separated_list(s):
 # @click.option('--nobench', help='Disable cuDNN benchmarking', type=bool, metavar='BOOL')
 # @click.option('--allow-tf32', help='Allow PyTorch to use TF32 internally', type=bool, metavar='BOOL')
 # @click.option('--workers', help='Override number of DataLoader workers', type=int, metavar='INT')
-# @click.option('--g_dict', help='Hidden dimension of transformer encoder_layer for resolution', type=CommaSeparatedList())
-# @click.option('--num_layers', help='Number of transformer encoder_layer', type=CommaSeparatedList())
+@click.option('--g_dict', help='Hidden dimension of transformer encoder_layer for resolution', type=parse_comma_separated_list, default = [256,64,16], show_default=True)
+@click.option('--num_layers', help='Number of transformer encoder_layer', type=parse_comma_separated_list, default = [1,3,3], show_default=True)
 @click.option('--depth', help='Depth of transformer encoder_layer', type=int, metavar='INT', default=32, show_default=True)
 @click.option('--minimum_head', help='Minimum head of transformer encoder_layer', type=int, metavar='INT', default=1, show_default=True)
-# @click.option('--linformer', help='Use linformer', type=bool, metavar='BOOL')
+@click.option('--linformer', help='Use linformer', type=bool, metavar='BOOL', default=False)
 def main(**kwargs):
     """Train a GAN using the techniques described in the paper
     "Alias-Free Generative Adversarial Networks".
@@ -248,11 +248,16 @@ def main(**kwargs):
     c.num_gpus = opts.gpus
     c.batch_size = opts.batch
     c.batch_gpu = opts.batch_gpu or opts.batch // opts.gpus
+
     c.G_kwargs.synthesis_kwargs.channel_base = c.D_kwargs.channel_base = opts.cbase
-    c.args.G_kwargs.synthesis_kwargs.depth = c.depth                                    ###
-    c.args.G_kwargs.synthesis_kwargs.minimum_head = c.minimum_head                      ###
+    c.G_kwargs.synthesis_kwargs.depth = c.depth                                     ###
+    c.G_kwargs.synthesis_kwargs.minimum_head = c.minimum_head                       ###
     c.G_kwargs.synthesis_kwargs.channel_max = c.D_kwargs.channel_max = opts.cmax
-    c.G_kwargs.mapping_kwargs.num_layers = opts.map_depth
+    c.G_kwargs.synthesis_kwargs.num_layers = c.num_layers                           ###
+    c.G_kwargs.synthesis_kwargs.G_dict = c.G_dict                                   ###
+    c.G_kwargs.synthesis_kwargs.linformer = c.linformer                             ###
+
+    c.G_kwargs.mapping_kwargs.num_layers = opts.map_depth   # map_depth == map
     c.D_kwargs.block_kwargs.freeze_layers = opts.freezed
     c.D_kwargs.epilogue_kwargs.mbstd_group_size = opts.mbstd_group
     c.loss_kwargs.r1_gamma = opts.gamma
@@ -387,7 +392,8 @@ def main(**kwargs):
     # if opts.fp32:
     #     c.G_kwargs.num_fp16_res = c.D_kwargs.num_fp16_res = 0
     #     c.G_kwargs.conv_clamp = c.D_kwargs.conv_clamp = None
-    c.G_kwargs.num_fp16_res = opts.g_num_fp16_res
+    c.G_kwargs.synthesis_kwargs.num_fp16_res = 4 # enable mixed-precision training
+    # c.G_kwargs.num_fp16_res = opts.g_num_fp16_res     ###
     c.G_kwargs.conv_clamp = 256 if opts.g_num_fp16_res > 0 else None
     c.D_kwargs.num_fp16_res = opts.d_num_fp16_res
     c.D_kwargs.conv_clamp = 256 if opts.d_num_fp16_res > 0 else None
