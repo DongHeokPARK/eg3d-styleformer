@@ -1,14 +1,10 @@
-# SPDX-FileCopyrightText: Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
-# SPDX-License-Identifier: LicenseRef-NvidiaProprietary
+﻿# Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
 #
-# NVIDIA CORPORATION, its affiliates and licensors retain all intellectual
-# property and proprietary rights in and to this material, related
-# documentation and any modifications thereto. Any use, reproduction,
-# disclosure or distribution of this material and related documentation
-# without an express license agreement from NVIDIA CORPORATION or
-# its affiliates is strictly prohibited.
-
-"""Converting legacy network pickle into the new format."""
+# NVIDIA CORPORATION and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA CORPORATION is strictly prohibited.
 
 import click
 import pickle
@@ -50,9 +46,13 @@ def load_network_pkl(f, force_fp16=False):
         for key in ['G', 'D', 'G_ema']:
             old = data[key]
             kwargs = copy.deepcopy(old.init_kwargs)
-            fp16_kwargs = kwargs.get('synthesis_kwargs', kwargs)
-            fp16_kwargs.num_fp16_res = 4
-            fp16_kwargs.conv_clamp = 256
+            if key.startswith('G'):
+                kwargs.synthesis_kwargs = dnnlib.EasyDict(kwargs.get('synthesis_kwargs', {}))
+                kwargs.synthesis_kwargs.num_fp16_res = 4
+                kwargs.synthesis_kwargs.conv_clamp = 256
+            if key.startswith('D'):
+                kwargs.num_fp16_res = 4
+                kwargs.conv_clamp = 256
             if kwargs != old.init_kwargs:
                 new = type(old)(**kwargs).eval().requires_grad_(False)
                 misc.copy_params_and_buffers(old, new, require_all=True)
@@ -132,7 +132,6 @@ def convert_tf_generator(tf_G):
             activation          = kwarg('mapping_nonlinearity', 'lrelu'),
             lr_multiplier       = kwarg('mapping_lrmul',        0.01),
             w_avg_beta          = kwarg('w_avg_beta',           0.995,  none=1),
-            
         ),
         synthesis_kwargs = dnnlib.EasyDict(
             channel_base        = kwarg('fmap_base',            16384) * 2,
@@ -143,9 +142,7 @@ def convert_tf_generator(tf_G):
             resample_filter     = kwarg('resample_kernel',      [1,3,3,1]),
             use_noise           = kwarg('use_noise',            True),
             activation          = kwarg('nonlinearity',         'lrelu'),
-
         ),
-
     )
 
     # Check for unknown kwargs.
@@ -168,9 +165,8 @@ def convert_tf_generator(tf_G):
     #for name, value in tf_params.items(): print(f'{name:<50s}{list(value.shape)}')
 
     # Convert params.
-    from training import networks_styleformer
-    network_class = networks_styleformer.Generator
-    G = network_class(**kwargs).eval().requires_grad_(False)
+    from training import networks
+    G = networks.Generator(**kwargs).eval().requires_grad_(False)
     # pylint: disable=unnecessary-lambda
     _populate_module_params(G,
         r'mapping\.w_avg',                                  lambda:     tf_params[f'dlatent_avg'],
@@ -251,7 +247,6 @@ def convert_tf_discriminator(tf_D):
 
     # Check for unknown kwargs.
     kwarg('structure')
-    kwarg('conditioning')
     unknown_kwargs = list(set(tf_kwargs.keys()) - known_kwargs)
     if len(unknown_kwargs) > 0:
         raise ValueError('Unknown TensorFlow kwarg', unknown_kwargs[0])
@@ -267,10 +262,9 @@ def convert_tf_discriminator(tf_D):
     #for name, value in tf_params.items(): print(f'{name:<50s}{list(value.shape)}')
 
     # Convert params.
-    from training import networks_stylegan2
-    D = networks_stylegan2.Discriminator(**kwargs).eval().requires_grad_(False)
+    from training import networks
+    D = networks.Discriminator(**kwargs).eval().requires_grad_(False)
     # pylint: disable=unnecessary-lambda
-    # pylint: disable=f-string-without-interpolation
     _populate_module_params(D,
         r'b(\d+)\.fromrgb\.weight',     lambda r:       tf_params[f'{r}x{r}/FromRGB/weight'].transpose(3, 2, 0, 1),
         r'b(\d+)\.fromrgb\.bias',       lambda r:       tf_params[f'{r}x{r}/FromRGB/bias'],

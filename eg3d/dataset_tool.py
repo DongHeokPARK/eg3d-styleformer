@@ -289,13 +289,15 @@ def open_dest(dest: str) -> Tuple[str, Callable[[str, Union[bytes, str]], None],
     dest_ext = file_ext(dest)
 
     if dest_ext == 'zip':
+        print("zip")
         if os.path.dirname(dest) != '':
             os.makedirs(os.path.dirname(dest), exist_ok=True)
-        zf = zipfile.ZipFile(file=dest, mode='w', compression=zipfile.ZIP_STORED)
+        zf = zipfile.ZipFile(file="/home/dt1pdh/WinURP/0dataset/" + dest, mode='w', compression=zipfile.ZIP_STORED)
         def zip_write_bytes(fname: str, data: Union[bytes, str]):
             zf.writestr(fname, data)
         return '', zip_write_bytes, zf.close
     else:
+        print("not zip")
         # If the output folder already exists, check that is is
         # empty.
         #
@@ -398,6 +400,8 @@ def convert_dataset(
 
     num_files, input_iter = open_dataset(source, max_images=max_images)
     archive_root_dir, save_bytes, close_dest = open_dest(dest)
+    print(dest)
+    # archive_root_dir = os.path.join("/home/dt1pdh/WinURP/0dataset", archive_root_dir)
 
     if resolution is None: resolution = (None, None)
     transform_image = make_transform(transform, *resolution)

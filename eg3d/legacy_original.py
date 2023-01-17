@@ -119,33 +119,30 @@ def convert_tf_generator(tf_G):
         return val if val is not None else none
 
     # Convert kwargs.
+    from training import networks_stylegan2
+    network_class = networks_stylegan2.Generator
     kwargs = dnnlib.EasyDict(
-        z_dim                   = kwarg('latent_size',          512),
-        c_dim                   = kwarg('label_size',           0),
-        w_dim                   = kwarg('dlatent_size',         512),
-        img_resolution          = kwarg('resolution',           1024),
-        img_channels            = kwarg('num_channels',         3),
-        mapping_kwargs = dnnlib.EasyDict(
-            num_layers          = kwarg('mapping_layers',       8),
-            embed_features      = kwarg('label_fmaps',          None),
-            layer_features      = kwarg('mapping_fmaps',        None),
-            activation          = kwarg('mapping_nonlinearity', 'lrelu'),
-            lr_multiplier       = kwarg('mapping_lrmul',        0.01),
-            w_avg_beta          = kwarg('w_avg_beta',           0.995,  none=1),
-            
+        z_dim               = kwarg('latent_size',          512),
+        c_dim               = kwarg('label_size',           0),
+        w_dim               = kwarg('dlatent_size',         512),
+        img_resolution      = kwarg('resolution',           1024),
+        img_channels        = kwarg('num_channels',         3),
+        channel_base        = kwarg('fmap_base',            16384) * 2,
+        channel_max         = kwarg('fmap_max',             512),
+        num_fp16_res        = kwarg('num_fp16_res',         0),
+        conv_clamp          = kwarg('conv_clamp',           None),
+        architecture        = kwarg('architecture',         'skip'),
+        resample_filter     = kwarg('resample_kernel',      [1,3,3,1]),
+        use_noise           = kwarg('use_noise',            True),
+        activation          = kwarg('nonlinearity',         'lrelu'),
+        mapping_kwargs      = dnnlib.EasyDict(
+            num_layers      = kwarg('mapping_layers',       8),
+            embed_features  = kwarg('label_fmaps',          None),
+            layer_features  = kwarg('mapping_fmaps',        None),
+            activation      = kwarg('mapping_nonlinearity', 'lrelu'),
+            lr_multiplier   = kwarg('mapping_lrmul',        0.01),
+            w_avg_beta      = kwarg('w_avg_beta',           0.995,  none=1),
         ),
-        synthesis_kwargs = dnnlib.EasyDict(
-            channel_base        = kwarg('fmap_base',            16384) * 2,
-            channel_max         = kwarg('fmap_max',             512),
-            num_fp16_res        = kwarg('num_fp16_res',         0),
-            conv_clamp          = kwarg('conv_clamp',           None),
-            architecture        = kwarg('architecture',         'skip'),
-            resample_filter     = kwarg('resample_kernel',      [1,3,3,1]),
-            use_noise           = kwarg('use_noise',            True),
-            activation          = kwarg('nonlinearity',         'lrelu'),
-
-        ),
-
     )
 
     # Check for unknown kwargs.
@@ -153,6 +150,8 @@ def convert_tf_generator(tf_G):
     kwarg('truncation_cutoff')
     kwarg('style_mixing_prob')
     kwarg('structure')
+    kwarg('conditioning')
+    kwarg('fused_modconv')
     unknown_kwargs = list(set(tf_kwargs.keys()) - known_kwargs)
     if len(unknown_kwargs) > 0:
         raise ValueError('Unknown TensorFlow kwarg', unknown_kwargs[0])
@@ -168,10 +167,9 @@ def convert_tf_generator(tf_G):
     #for name, value in tf_params.items(): print(f'{name:<50s}{list(value.shape)}')
 
     # Convert params.
-    from training import networks_styleformer
-    network_class = networks_styleformer.Generator
     G = network_class(**kwargs).eval().requires_grad_(False)
     # pylint: disable=unnecessary-lambda
+    # pylint: disable=f-string-without-interpolation
     _populate_module_params(G,
         r'mapping\.w_avg',                                  lambda:     tf_params[f'dlatent_avg'],
         r'mapping\.embed\.weight',                          lambda:     tf_params[f'mapping/LabelEmbed/weight'].transpose(),
@@ -203,6 +201,7 @@ def convert_tf_generator(tf_G):
         r'synthesis\.b(\d+)\.torgb\.affine\.bias',          lambda r:   tf_params[f'synthesis/{r}x{r}/ToRGB/mod_bias'] + 1,
         r'synthesis\.b(\d+)\.skip\.weight',                 lambda r:   tf_params[f'synthesis/{r}x{r}/Skip/weight'][::-1, ::-1].transpose(3, 2, 0, 1),
         r'.*\.resample_filter',                             None,
+        r'.*\.act_filter',                                  None,
     )
     return G
 

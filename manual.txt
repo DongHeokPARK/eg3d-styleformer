@@ -1,0 +1,18 @@
+/dataset_preprocessing/shapenet_cars/run_me.py
+    -> line20 : working_dir = "/home/dt1pdh/WinURP/0dataset" ((추가))
+
+/eg3d/dataset_tool.py
+    -> line295 :zf = zipfile.ZipFile(file="/home/dt1pdh/WinURP/0dataset/" + dest, mode='w', compression=zipfile.ZIP_STORED) ((수정))
+
+pip dependency
+    imgui
+    glfw
+
+conda dependency
+    click
+    gdown
+    pyopengl
+    scipy=1.9.1
+    matplotlib
+    gcc >= 12.1.0
+    libstdcxx-ng=12

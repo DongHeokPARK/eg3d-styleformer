@@ -17,6 +17,7 @@ import subprocess
 
 if __name__ == '__main__':
     with tempfile.TemporaryDirectory() as working_dir:
+        working_dir = "/home/dt1pdh/WinURP/0dataset"
         download_name = 'cars_train.zip'
         url = 'https://drive.google.com/uc?id=1bThUNtIHx4xEQyffVBSf82ABDDh2HlFn'
         output_dataset_name = 'cars_128.zip'
@@ -38,4 +39,5 @@ if __name__ == '__main__':
         print("Creating dataset zip...")
         cmd = f"python {os.path.join(dir_path, '../../eg3d', 'dataset_tool.py')}"
         cmd += f" --source {extracted_data_path} --dest {output_dataset_name} --resolution 128x128"
+        print(cmd)
         subprocess.run([cmd], shell=True)
