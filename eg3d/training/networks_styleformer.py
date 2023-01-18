@@ -550,8 +550,11 @@ class SynthesisNetwork(nn.Module):
         self.img_channels = img_channels
         self.num_block = num_layers
         self.block_resolutions = [2 ** i for i in range(3, self.img_resolution_log2 + 1)]
+        print("num_layers : \n", self.num_block)
+        print("self.block_resolutions", self.block_resolutions)
         assert len(self.block_resolutions) == len(self.num_block)
         channels_dict = dict(zip(*[self.block_resolutions, G_dict]))
+        print("c dict : \n", channels_dict)
         fp16_resolution = max(2 ** (self.img_resolution_log2 + 1 - num_fp16_res), 8)
         
         self.num_ws = 0
@@ -609,6 +612,7 @@ class Generator(nn.Module):
         self.w_dim = w_dim
         self.img_resolution = img_resolution
         self.img_channels = img_channels
+        print("img_resolution: \n", img_resolution)
         self.synthesis = SynthesisNetwork(w_dim=w_dim, img_resolution=img_resolution, img_channels=img_channels, **synthesis_kwargs)
         self.num_ws = self.synthesis.num_ws
         self.mapping = MappingNetwork(z_dim=z_dim, c_dim=c_dim, w_dim=w_dim, num_ws=self.num_ws, **mapping_kwargs)       

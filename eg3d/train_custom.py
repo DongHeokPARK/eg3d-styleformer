@@ -213,8 +213,8 @@ class CommaSeparatedList(click.ParamType):
 # @click.option('--allow-tf32', help='Allow PyTorch to use TF32 internally', type=bool, metavar='BOOL')
 # @click.option('--workers', help='Override number of DataLoader workers', type=int, metavar='INT')
 @click.option('--minimum_head', help='Minimum head of transformer encoder_layer', type=int, metavar='INT', default=1, show_default=True)
-@click.option('--g_dict', help='Hidden dimension of transformer encoder_layer for resolution', metavar='INT', type=list, default = [256,64,16], show_default=True)
-@click.option('--num_layers', help='Number of transformer encoder_layer', type=list, default = [1,3,3], show_default=True)
+@click.option('--g_dict', help='Hidden dimension of transformer encoder_layer for resolution', metavar='INT', type=list, default = [256,128,64,32,16,8], show_default=True)
+@click.option('--num_layers', help='Number of transformer encoder_layer', type=list, default = [1,3,3,3,3,3], show_default=True)
 @click.option('--depth', help='Depth of transformer encoder_layer', type=int, metavar='INT', default=32, show_default=True)
 # @click.option('--minimum_head', help='Minimum head of transformer encoder_layer', type=int, metavar='INT', default=1, show_default=True)
 @click.option('--linformer', help='Use linformer', type=bool, metavar='BOOL', default=False)
@@ -300,7 +300,7 @@ def main(**kwargs):
     c.ema_kimg = c.batch_size * 10 / 32
     c.G_kwargs.class_name = 'training.triplane.TriPlaneGenerator'
     c.D_kwargs.class_name = 'training.dual_discriminator.DualDiscriminator'
-    c.G_kwargs.fused_modconv_default = 'inference_only' # Speed up training by using regular convolutions instead of grouped convolutions.
+    # c.G_kwargs.fused_modconv_default = 'inference_only' # Speed up training by using regular convolutions instead of grouped convolutions.
     c.loss_kwargs.filter_mode = 'antialiased' # Filter mode for raw images ['antialiased', 'none', float [0-1]]
     c.D_kwargs.disc_c_noise = opts.disc_c_noise # Regularization for discriminator pose conditioning
 
@@ -371,7 +371,7 @@ def main(**kwargs):
     if opts.density_reg > 0:
         c.G_reg_interval = opts.density_reg_every
     c.G_kwargs.rendering_kwargs = rendering_options
-    c.G_kwargs.num_fp16_res = 0
+    # c.G_kwargs.num_fp16_res = 0
     c.loss_kwargs.blur_init_sigma = 10 # Blur the images seen by the discriminator.
     c.loss_kwargs.blur_fade_kimg = c.batch_size * opts.blur_fade_kimg / 32 # Fade out the blur during the first N kimg.
 
@@ -410,7 +410,7 @@ def main(**kwargs):
     #     c.G_kwargs.conv_clamp = c.D_kwargs.conv_clamp = None
     c.G_kwargs.synthesis_kwargs.num_fp16_res = 4 # enable mixed-precision training
     # c.G_kwargs.num_fp16_res = opts.g_num_fp16_res     ###
-    c.G_kwargs.conv_clamp = 256 if opts.g_num_fp16_res > 0 else None
+    c.G_kwargs.synthesis_kwargs.conv_clamp = 256 if opts.g_num_fp16_res > 0 else None
     c.D_kwargs.num_fp16_res = opts.d_num_fp16_res
     c.D_kwargs.conv_clamp = 256 if opts.d_num_fp16_res > 0 else None
 

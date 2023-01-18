@@ -154,8 +154,8 @@ def convert_tf_generator(tf_G):
     kwarg('truncation_cutoff')
     kwarg('style_mixing_prob')
     kwarg('structure')
-    # kwarg('conditioning')	
-    # kwarg('fused_modconv')
+    kwarg('conditioning')	
+    kwarg('fused_modconv')
     unknown_kwargs = list(set(tf_kwargs.keys()) - known_kwargs)
     if len(unknown_kwargs) > 0:
         raise ValueError('Unknown TensorFlow kwarg', unknown_kwargs[0])
