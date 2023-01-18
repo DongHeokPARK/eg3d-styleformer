@@ -10,7 +10,8 @@
 
 import torch
 from torch_utils import persistence
-from training.networks_stylegan2 import Generator as StyleGAN2Backbone
+# from training.networks_stylegan2 import Generator as StyleGAN2Backbone
+from training.networks_styleformer import Generator as StyleGAN2Backbone
 from training.volumetric_rendering.renderer import ImportanceRenderer
 from training.volumetric_rendering.ray_sampler import RaySampler
 import dnnlib

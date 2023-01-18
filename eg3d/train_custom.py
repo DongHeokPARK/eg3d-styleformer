@@ -126,6 +126,19 @@ def parse_comma_separated_list(s):
 
 #----------------------------------------------------------------------------
 
+#----------------------------------------------------------------------------
+
+class CommaSeparatedList(click.ParamType):
+    name = 'list'
+
+    def convert(self, value, param, ctx):
+        _ = param, ctx
+        if value is None or value.lower() == 'none' or value == '':
+            return []
+        return value.split(',')
+
+#----------------------------------------------------------------------------
+
 @click.command()
 
 # Required.
@@ -147,7 +160,7 @@ def parse_comma_separated_list(s):
 @click.option('--p',            help='Probability for --aug=fixed', metavar='FLOAT',            type=click.FloatRange(min=0, max=1), default=0.2, show_default=True)
 @click.option('--target',       help='Target value for --aug=ada', metavar='FLOAT',             type=click.FloatRange(min=0, max=1), default=0.6, show_default=True)
 @click.option('--batch-gpu',    help='Limit batch size per GPU', metavar='INT',                 type=click.IntRange(min=1))
-@click.option('--cbase',        help='Capacity multiplier', metavar='INT',                      type=click.IntRange(min=1), default=32768, show_default=True)
+@click.option('--cbase',        help='Capacity multiplier', metavar='INT',                      type=click.IntRange(min=1), default=32768, show_default=False)
 @click.option('--cmax',         help='Max. feature maps', metavar='INT',                        type=click.IntRange(min=1), default=512, show_default=True)
 @click.option('--glr',          help='G learning rate  [default: varies]', metavar='FLOAT',     type=click.FloatRange(min=0))
 @click.option('--dlr',          help='D learning rate', metavar='FLOAT',                        type=click.FloatRange(min=0), default=0.002, show_default=True)
@@ -199,10 +212,11 @@ def parse_comma_separated_list(s):
 # @click.option('--nobench', help='Disable cuDNN benchmarking', type=bool, metavar='BOOL')
 # @click.option('--allow-tf32', help='Allow PyTorch to use TF32 internally', type=bool, metavar='BOOL')
 # @click.option('--workers', help='Override number of DataLoader workers', type=int, metavar='INT')
-@click.option('--g_dict', help='Hidden dimension of transformer encoder_layer for resolution', type=parse_comma_separated_list, default = [256,64,16], show_default=True)
-@click.option('--num_layers', help='Number of transformer encoder_layer', type=parse_comma_separated_list, default = [1,3,3], show_default=True)
-@click.option('--depth', help='Depth of transformer encoder_layer', type=int, metavar='INT', default=32, show_default=True)
 @click.option('--minimum_head', help='Minimum head of transformer encoder_layer', type=int, metavar='INT', default=1, show_default=True)
+@click.option('--g_dict', help='Hidden dimension of transformer encoder_layer for resolution', metavar='INT', type=list, default = [256,64,16], show_default=True)
+@click.option('--num_layers', help='Number of transformer encoder_layer', type=list, default = [1,3,3], show_default=True)
+@click.option('--depth', help='Depth of transformer encoder_layer', type=int, metavar='INT', default=32, show_default=True)
+# @click.option('--minimum_head', help='Minimum head of transformer encoder_layer', type=int, metavar='INT', default=1, show_default=True)
 @click.option('--linformer', help='Use linformer', type=bool, metavar='BOOL', default=False)
 def main(**kwargs):
     """Train a GAN using the techniques described in the paper
@@ -250,12 +264,14 @@ def main(**kwargs):
     c.batch_gpu = opts.batch_gpu or opts.batch // opts.gpus
 
     c.G_kwargs.synthesis_kwargs.channel_base = c.D_kwargs.channel_base = opts.cbase
-    c.G_kwargs.synthesis_kwargs.depth = c.depth                                     ###
-    c.G_kwargs.synthesis_kwargs.minimum_head = c.minimum_head                       ###
+    c.G_kwargs.synthesis_kwargs.depth = opts.depth                                     ###
+    c.G_kwargs.synthesis_kwargs.minimum_head = opts.minimum_head                       ###
+    print("opts.minimum_head: ", opts.minimum_head)
     c.G_kwargs.synthesis_kwargs.channel_max = c.D_kwargs.channel_max = opts.cmax
-    c.G_kwargs.synthesis_kwargs.num_layers = c.num_layers                           ###
-    c.G_kwargs.synthesis_kwargs.G_dict = c.G_dict                                   ###
-    c.G_kwargs.synthesis_kwargs.linformer = c.linformer                             ###
+    c.G_kwargs.synthesis_kwargs.num_layers = opts.num_layers                           ###
+    print(opts.g_dict)
+    c.G_kwargs.synthesis_kwargs.G_dict = opts.g_dict                                   ###
+    c.G_kwargs.synthesis_kwargs.linformer = opts.linformer                             ###
 
     c.G_kwargs.mapping_kwargs.num_layers = opts.map_depth   # map_depth == map
     c.D_kwargs.block_kwargs.freeze_layers = opts.freezed

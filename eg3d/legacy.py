@@ -50,9 +50,10 @@ def load_network_pkl(f, force_fp16=False):
         for key in ['G', 'D', 'G_ema']:
             old = data[key]
             kwargs = copy.deepcopy(old.init_kwargs)
-            fp16_kwargs = kwargs.get('synthesis_kwargs', kwargs)
-            fp16_kwargs.num_fp16_res = 4
-            fp16_kwargs.conv_clamp = 256
+            if key.startswith('G'):
+                kwargs.synthesis_kwargs = dnnlib.EasyDict(kwargs.get('synthesis_kwargs', {}))
+                kwargs.synthesis_kwargs.num_fp16_res = 4
+                kwargs.synthesis_kwargs.conv_clamp = 256
             if kwargs != old.init_kwargs:
                 new = type(old)(**kwargs).eval().requires_grad_(False)
                 misc.copy_params_and_buffers(old, new, require_all=True)
@@ -153,6 +154,8 @@ def convert_tf_generator(tf_G):
     kwarg('truncation_cutoff')
     kwarg('style_mixing_prob')
     kwarg('structure')
+    # kwarg('conditioning')	
+    # kwarg('fused_modconv')
     unknown_kwargs = list(set(tf_kwargs.keys()) - known_kwargs)
     if len(unknown_kwargs) > 0:
         raise ValueError('Unknown TensorFlow kwarg', unknown_kwargs[0])
@@ -203,6 +206,7 @@ def convert_tf_generator(tf_G):
         r'synthesis\.b(\d+)\.torgb\.affine\.bias',          lambda r:   tf_params[f'synthesis/{r}x{r}/ToRGB/mod_bias'] + 1,
         r'synthesis\.b(\d+)\.skip\.weight',                 lambda r:   tf_params[f'synthesis/{r}x{r}/Skip/weight'][::-1, ::-1].transpose(3, 2, 0, 1),
         r'.*\.resample_filter',                             None,
+        ### r'.*\.act_filter',                                  None,
     )
     return G
 
