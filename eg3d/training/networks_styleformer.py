@@ -326,7 +326,8 @@ class MappingNetwork(torch.nn.Module):
         if num_ws is not None and w_avg_beta is not None:
             self.register_buffer('w_avg', torch.zeros([w_dim]))
 
-    def forward(self, z, c, truncation_psi=1, truncation_cutoff=None, skip_w_avg_update=False):
+    # def forward(self, z, c, truncation_psi=1, truncation_cutoff=None, skip_w_avg_update=False):
+    def forward(self, z, c, truncation_psi=1, truncation_cutoff=None, update_emas=False):
         # Embed, normalize, and concat inputs.
         x = None
         with torch.autograd.profiler.record_function('input'):
@@ -344,7 +345,8 @@ class MappingNetwork(torch.nn.Module):
             x = layer(x)
 
         # Update moving average of W.
-        if self.w_avg_beta is not None and self.training and not skip_w_avg_update:
+        # if self.w_avg_beta is not None and self.training and not skip_w_avg_update:
+        if self.w_avg_beta is not None and self.training and not update_emas:
             with torch.autograd.profiler.record_function('update_w_avg'):
                 self.w_avg.copy_(x.detach().mean(dim=0).lerp(self.w_avg, self.w_avg_beta))
 
@@ -487,7 +489,7 @@ class EncoderBlock(nn.Module):
             self.num_torgb += 1
       
         
-    def forward(self, x, img, ws, force_fp32=True, fused_modconv=None):
+    def forward(self, x, img, ws, force_fp32=True, fused_modconv=None, update_emas=False):
         misc.assert_shape(ws, [None, self.num_attention + self.num_torgb, self.w_dim])
         w_iter = iter(ws.unbind(dim=1))
         dtype = torch.float16 if self.use_fp16 and not force_fp32 else torch.float32
@@ -541,7 +543,8 @@ class EncoderBlock(nn.Module):
 
 @persistence.persistent_class
 class SynthesisNetwork(nn.Module):
-    def __init__(self, w_dim, img_resolution, img_channels, depth, minimum_head, num_layers, G_dict, conv_clamp, channel_base = 8192, channel_max = 256, num_fp16_res = 0, linformer=False):
+    def __init__(self, w_dim, img_resolution, img_channels, depth, minimum_head, num_layers, G_dict, 
+                 conv_clamp, channel_base = 8192, channel_max = 256, num_fp16_res = 0, linformer=False,):
         assert img_resolution >= 4 and img_resolution & (img_resolution - 1) == 0
         super().__init__()    
         self.w_dim = w_dim
@@ -577,7 +580,7 @@ class SynthesisNetwork(nn.Module):
                     self.num_ws += block.num_torgb
                 setattr(self, f'b{res}_{j}', block)
 
-    def forward(self, ws=None):
+    def forward(self, ws=None, **block_kwargs):
         block_ws = []
         with torch.autograd.profiler.record_function('split_ws'):
             misc.assert_shape(ws, [None, self.num_ws, self.w_dim])

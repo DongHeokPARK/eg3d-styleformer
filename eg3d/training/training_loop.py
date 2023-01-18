@@ -125,6 +125,11 @@ def training_loop(
     cudnn_benchmark         = True,     # Enable torch.backends.cudnn.benchmark?
     abort_fn                = None,     # Callback function for determining whether to abort training. Must return consistent results across ranks.
     progress_fn             = None,     # Callback function for updating training progress. Called for all ranks.
+    num_layers              = None,     # Number of Transformer encoder layer.
+    G_dict                  = None,     # hidden dimension for transformer encoder layer
+    depth                   = None,     # depth for transformer encoder layer
+    minimum_head            = None,     # minimum_head for transformer encoder layer
+    linformer               = None,     # Use linformer
 ):
     # Initialize.
     start_time = time.time()
